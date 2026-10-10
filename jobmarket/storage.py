@@ -51,10 +51,19 @@ def load_frame(con: sqlite3.Connection, eligible_only: bool = True) -> pd.DataFr
 
 def market_summary(df: pd.DataFrame) -> dict:
     """Headline numbers for the README/dashboard."""
+    if df.empty:
+        return {
+            "postings": 0,
+            "companies": 0,
+            "sources": 0,
+            "by_family": {},
+            "strong_matches": 0,
+            "median_score": 0.0,
+        }
     return {
         "postings": len(df),
         "companies": int(df["company"].nunique()),
-        "sources": df["source"].nunique(),
+        "sources": int(df["source"].nunique()),
         "by_family": df["family"].value_counts().head(8).to_dict(),
         "strong_matches": int((df["match_score"] >= 8).sum()),
         "median_score": round(float(df["match_score"].median()), 2),

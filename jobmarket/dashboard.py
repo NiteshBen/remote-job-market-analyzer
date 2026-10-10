@@ -15,6 +15,8 @@ ACCENT = "#1F3B63"
 def make_charts(df: pd.DataFrame, out_dir: str | Path) -> list[Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    if df.empty:
+        return []
     paths = []
 
     # 1) postings by role family
@@ -71,7 +73,10 @@ def make_excel_dashboard(df: pd.DataFrame, out_path: str | Path) -> Path:
 
     cols = ["match_score", "title", "company", "family", "skills_matched", "location",
             "salary", "source", "date", "url"]
-    df = df.sort_values("match_score", ascending=False)[cols]
+    if df.empty:
+        df = pd.DataFrame(columns=cols)
+    else:
+        df = df.sort_values("match_score", ascending=False)[cols]
     with pd.ExcelWriter(out_path, engine="openpyxl") as writer:
         df.to_excel(writer, sheet_name="All Eligible", index=False)
         df[df["match_score"] >= 8].to_excel(writer, sheet_name="Strong Matches", index=False)

@@ -1,8 +1,10 @@
 import pandas as pd
 import pytest
 
+from jobmarket.dashboard import make_charts
 from jobmarket.eligibility import is_eligible
 from jobmarket.match import match_job
+from jobmarket.storage import market_summary, top_companies, top_skills
 
 
 @pytest.mark.parametrize("location,title,expected", [
@@ -11,10 +13,12 @@ from jobmarket.match import match_job
     ("Remote, APAC", "Support Engineer (APAC)", True),
     ("Remote, Global", "Platform Security Engineer (AMER/APAC)", True),  # mixed region incl. APAC
     ("Remote, US", "Software Engineer L2", False),
-    ("Remote - India", "Data Analyst", True),        # candidate IS in India
+    ("US", "Backend Developer", False),                                  # Standalone US
+    ("US (Remote)", "Software Engineer", False),                         # US Remote
+    ("Remote - India", "Data Analyst", True),                            # candidate IS in India
     ("Remote, Canada", "Backend Engineer", False),
     ("East Coast US & Europe (Remote)", "Software Engineer", False),
-    ("Remote, Global", "Support Engineer (EMEA - Weekends)", False),  # title narrows region
+    ("Remote, Global", "Support Engineer (EMEA - Weekends)", False),     # title narrows region
     ("Berlin, Germany", "Python Developer", False),
 ])
 def test_eligibility(location, title, expected):
@@ -46,6 +50,16 @@ def test_match_caps_keyword_stuffing():
     assert stuffed.score - lean.score <= 3
 
 
+def test_word_boundary_skill_matching_avoids_false_positives():
+    # Ordinary English words containing short skill substrings
+    text = "We offer cloud storage, digital marketing campaigns, and client interest."
+    res = match_job("Operations Manager", text)
+    # Must NOT match rag (from storage), git (from digital), rest (from interest)
+    assert "rag" not in res.skills_matched
+    assert "git" not in res.skills_matched
+    assert "rest" not in res.skills_matched
+
+
 def test_market_summary_and_top_skills():
     df = pd.DataFrame([
         {"source": "remoteok", "company": "Acme", "family": "python_dev", "match_score": 9.0,
@@ -55,8 +69,17 @@ def test_market_summary_and_top_skills():
         {"source": "himalayas", "company": "Acme", "family": "data_ml", "match_score": 8.2,
          "skills_matched": "python,tensorflow"},
     ])
-    from jobmarket.storage import market_summary, top_skills, top_companies
     s = market_summary(df)
     assert s["postings"] == 3 and s["companies"] == 2 and s["strong_matches"] == 2
     assert top_skills(df).idxmax() == "python"
     assert top_companies(df).idxmax() == "Acme"
+
+
+def test_empty_dataframe_handling(tmp_path):
+    empty_df = pd.DataFrame(columns=["source", "company", "family", "match_score", "skills_matched"])
+    s = market_summary(empty_df)
+    assert s["postings"] == 0
+    assert s["companies"] == 0
+    assert s["median_score"] == 0.0
+    charts = make_charts(empty_df, tmp_path)
+    assert charts == []

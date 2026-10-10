@@ -9,7 +9,7 @@ import re
 
 # Regions/countries that cannot hire a candidate working from India.
 _INELIGIBLE = [
-    r"\bus[- ]?only\b", r"united states", r"\busa\b", r"\bu\.s\.", r"us citizen", r"\busc\b",
+    r"\bus\b", r"\bus[- ]?only\b", r"united states", r"\busa\b", r"\bu\.s\.", r"us citizen", r"\busc\b",
     r"\bcanada\b", r"canadian", r"\buk only\b", r"united kingdom", r"\bengland\b", r"\blondon\b",
     r"east coast", r"west coast", r"us[ /&+]*europe", r"usa[ /&+]*europe", r"europe[ /&+]*us",
     r"europe only", r"european union", r"\beu only\b", r"\bemea\b", r"\bamer\b", r"\blatam\b",

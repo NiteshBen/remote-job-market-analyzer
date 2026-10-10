@@ -3,7 +3,7 @@
 Fetch, filter and analyze the **worldwide-remote job market** from public APIs —
 then rank every posting against a resume and export an Excel dashboard with charts.
 
-Built by [Nitesh Beniwal](https://github.com/NiteshBen01) during a real job hunt:
+Built by [Nitesh Beniwal](https://github.com/NiteshBen) during a real job hunt:
 it answers the practical question *"of the thousands of 'remote' postings out there,
 which ones can I actually take, and which fit me best?"*
 
@@ -17,15 +17,15 @@ Hacker News *"Ask HN: Who is hiring?"* threads.
    normalizes them into a single schema and de-duplicates across sources.
 2. **Filter** — a conservative location-eligibility engine decides which postings a
    candidate based in India can genuinely take. It catches the traps that simple
-   "remote" filters miss: `Remote - US`, `East Coast US & Europe`, titles like
+   "remote" filters miss: `Remote - US`, `US (Remote)`, `East Coast US & Europe`, titles like
    `(EMEA - Weekends)` that narrow what the location field claims, timezone-gated
    pipelines, and country-restricted listings.
-3. **Match** — scores every eligible posting against a weighted skill profile
-   (Python, SQL, Pandas, Power BI, TensorFlow, CrewAI/LLM...), classifies it into a
-   role family, and penalizes senior-only titles. Scores ≥ 8 are "strong matches".
+3. **Match** — scores every eligible posting against a weighted skill profile with regex
+   word boundary matching (Python, SQL, Pandas, Power BI, TensorFlow, CrewAI/LLM...),
+   classifies it into a role family, and penalizes senior-only titles. Scores ≥ 8 are "strong matches".
 4. **Store** — SQLite with `UNIQUE(url)`, so re-runs only add genuinely new postings.
-5. **Report** — Excel dashboard (all eligible + strong matches) and charts:
-   postings by role family, most-demanded skills, match-score distribution.
+5. **Report & Query** — Interactive terminal search, headline reports, Excel dashboards
+   (all eligible + strong matches), and charts (role families, demanded skills, score distribution).
 
 ## Quick start
 
@@ -34,8 +34,9 @@ pip install -r requirements.txt
 
 python cli.py fetch --db jobs.db        # fetch + filter + score (tolerates dead APIs)
 python cli.py fetch --db jobs.db        # re-runs are idempotent (UNIQUE url)
-python cli.py dashboard --db jobs.db --out output/
 python cli.py report --db jobs.db       # headline numbers in the terminal
+python cli.py search --db jobs.db --skill python --family genai_ai --min-score 8  # query postings
+python cli.py dashboard --db jobs.db --out output/  # charts + Excel dashboard
 ```
 
 `sample_resume.md` shows the profile format the default skill weights were built for —
@@ -54,7 +55,9 @@ Charts from that run are in [`output/`](output/) — e.g.
 
 - **Conservative eligibility beats generous.** A wrongly-included posting wastes an
   application; a wrongly-excluded one only hides a maybe. See `tests/test_pipeline.py`
-  for the exact trap cases the filter must catch (13 location scenarios).
+  for the exact trap cases the filter must catch (12 location scenarios including US/US Remote).
+- **Word-boundary matching prevents false positives.** Short skills like `rag`, `git`, `api`,
+  and `rest` use word boundaries so words like `storage`, `digital`, or `interest` are not miscounted.
 - **Skill score is capped** (12.0) so keyword-stuffed JDs can't dominate the ranking.
 - **Seniority penalty (8.0/title flag)** pushes senior-only roles out of an
   entry-level candidate's apply queue, while junior/graduate titles get a bonus.
@@ -65,13 +68,21 @@ Charts from that run are in [`output/`](output/) — e.g.
 ```
 jobmarket/
   fetch.py         # 7 public-source fetchers + normalization + dedupe
-  eligibility.py   # India-based remote eligibility rules
-  match.py         # skill scoring + role-family classification
-  storage.py       # SQLite + pandas analysis helpers
+  eligibility.py   # India-based remote eligibility rules (catches US/EMEA/AMER gates)
+  match.py         # regex word-boundary skill scoring + role-family classification
+  storage.py       # SQLite + pandas analysis helpers + empty dataframe guards
   dashboard.py     # matplotlib charts + Excel dashboard
-cli.py             # fetch / dashboard / report commands
-tests/             # pytest: eligibility traps, scoring caps, summaries
+cli.py             # fetch / dashboard / report / search commands
+tests/             # pytest: eligibility traps, word-boundary scoring, summaries
 ```
+
+## Testing
+
+```bash
+py -m pytest -v
+```
+
+18 tests covering location eligibility traps, word-boundary skill matching, seniority penalties, keyword stuffing limits, and summary statistics.
 
 ## License
 

@@ -30,8 +30,8 @@ FAMILIES: dict[str, list[str]] = {
                 r"tensorflow", r"pytorch", r"\bnlp\b", r"computer vision", r"\bmlops\b",
                 r"\bdata engineer", r"\betl\b"],
     "python_dev": [r"python developer", r"backend engineer", r"back-end", r"\bdjango\b",
-                   r"\bflask\b", r"\bfastapi\b", r"software engineer", r"software developer",
-                   r"\bpython\b"],
+                    r"\bflask\b", r"\bfastapi\b", r"software engineer", r"software developer",
+                    r"\bpython\b"],
     "qa_testing": [r"\bqa\b", r"quality assurance", r"test engineer", r"\bsdet\b", r"\btester\b"],
     "support_solutions": [r"technical support", r"solutions engineer", r"support engineer",
                           r"customer engineer", r"technical consultant"],
@@ -69,6 +69,13 @@ def _family_scores(title: str, text: str) -> dict[str, float]:
     return scores
 
 
+def _skill_matches(skill: str, text: str) -> bool:
+    """Match skill keywords using word boundaries to prevent substring false-positives."""
+    if skill in ("c++", "c#"):
+        return skill in text
+    return bool(re.search(r"\b" + re.escape(skill) + r"\b", text))
+
+
 def match_job(job_title: str, job_text: str,
               skill_weights: dict[str, float] | None = None) -> MatchResult:
     """Score how well a posting fits the resume.
@@ -83,7 +90,7 @@ def match_job(job_title: str, job_text: str,
 
     skill_score, matched = 0.0, []
     for skill, weight in weights.items():
-        if skill in text:
+        if _skill_matches(skill, text):
             skill_score += weight
             matched.append(skill)
     skill_score = min(skill_score, 12.0)  # cap: keyword-stuffed JDs shouldn't dominate
